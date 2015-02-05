@@ -247,20 +247,32 @@ Then, we can encode a step of {lambda}-calculus with:
 
 (*** Emit document ***)
 
+open Llncs
+
+let mines = new_institution "MINES ParisTech"
+
+let funding =
+  "This research has received funding from the European Research Council under the FP7 grant agreement 278673, Project MemCAD"
+
+let title = {
+  title = "The tree machine{command\"thanks\" [A,funding] A}";
+  running_title = None
+}
+
+let authors = [
+  { name = "Arnaud Spiwack";
+    email = "arnaud@spiwack.net";
+    institution = mines;
+    running_name = None;
+  };
+]
+
 let d = concat [
-  paragraph"Abstract"^^abstract;
   eilenberg;
   definition;
   translations;
   command \"bibliography\" [A,"library"] A;
 ]
-
-let funding =
-  "This research has received funding from the European Research Council under the FP7 grant agreement 278673, Project MemCAD"
-
-let title = "The tree machine{footnote funding}"
-
-let author = "Arnaud Spiwack"
 
 let packages = [
   "inputenc" , "utf8" ;
@@ -281,7 +293,8 @@ let file = \"treemachine.tex\"
 
 let _ = emit ~file (document
                              ~title
-                             ~author
+                             ~authors
+                             ~abstract
                              ~prelude
                              ~packages
                              d)
