@@ -110,6 +110,23 @@ let includegraphics ?height ?width ?keepaspectratio t =
   let opt = A,concat_with_sep (Option.flatten [height;width;keepaspectratio])  (text",") in
   command "includegraphics" ~packages:["graphicx",""] ~opt [A,t] A
 
+(*** Definition blocks ***)
+
+type defline =
+    { name:Latex.t ; def:Latex.t ; side:Latex.t option }
+
+let defline ?side name def =
+  { name ; def ; side }
+
+let definition lines =
+  let format_line {name;def;side} =
+    let defn = name^^text" = "^^def in
+    match side with
+    | Some side -> defn^^qquad^^text"("^^side^^text")"
+    | None -> defn
+  in
+  let lines = List.map format_line lines in
+  itemize lines
 
 (** A short module for proof.sty *)
 

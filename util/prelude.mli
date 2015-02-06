@@ -45,6 +45,13 @@ val citation_needed : Latex.t
 val includegraphics : ?height:Latex.size -> ?width:Latex.size -> ?keepaspectratio:bool
   -> Latex.t -> Latex.t
 
+(*** Definition blocks ***)
+
+type defline
+
+val defline : ?side:Latex.t -> Latex.t -> Latex.t -> defline
+
+val definition : defline list -> Latex.t
 
 (** A short module for proof.sty *)
 module Infer : sig
