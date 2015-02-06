@@ -102,10 +102,6 @@ It will be useful to embed natural numbers in trees. Any embedding will do. We c
   "<%2*n+2 = (((),()),n)%>"
  ]}
 
-Commonly, we will want to tag a tree with a constant:
-{itemize[
-  "<%tag_u = x => (u,x)%>";
-]}
 
 {subsection"Zipper"}
 
