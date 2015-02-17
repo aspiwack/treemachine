@@ -7,7 +7,9 @@ open Prelude
 (*** labels ***)
 
 let s_treemachine = label ~name:\"s:treemachine\" ()
+let s_zipper = label ~name:\"s:zipper\" ()
 let s_finitetype = label ~name:\"s:finitetype\" ()
+let s_ram = label ~name:\"s:ram\" ()
 let s_lambda = label ~name:\"s:lambda\" ()
 
 (*** doc ***)
@@ -66,9 +68,13 @@ Tree machines, by virtue of the <%(ph,ph)%> instruction scheme, has an infinite 
 
 {subsection"A language of guards and actions"}
 
-As partial functions, the instructions of tree machines can be divided into a guard followed by a reconstruction function. We will adopt a suggestive notation <%gamma => alpha%> where <%gamma%> represents the guard and <%alpha%> the reconstruction function. We may use <%gamma_1 => alpha_1 | gamma_2 => alpha_2%>:
-(* arnaud: ne pas oublier de d'efinir le wildcard *)
+One way to read the instruction in <%Phi%>, is to think of them as combinators giving means to match tree prefixes and rearrange the corresponding subtrees. That is, instructions of tree machines perform pattern-matching. We shall give an alternative set of instructions for tree machines which is suggestive of the pattern-matching notation functional programmers all know and love.
+
+We write <%gamma => alpha%> for a partial function whose domain is denoted by the {emph"guard"}, or pattern, <%gamma%> and whose functional action is denoted by the {emph"action"} <%alpha%>. Both <%gamma%> and <%alpha%> are trees with variables, with the following restrictions: variables occur at most once <%gamma%>, and all variables of <%alpha%> appear in <%gamma%> (variables in <%gamma%> bind variables in <%alpha%>). We may use <%gamma_1 => alpha_1 | gamma_2 => alpha_2%> instead of <%(gamma_1 => alpha_1)+(gamma_2 => alpha_2)%> when <%gamma_1%> and <%gamma_2%> denote disjoint domains ({emph"i.e."} <%gamma_1%> and <%gamma_2%> are not unifiable). We can also use the wildcard pattern ``<%\_%>'' to represent a variable in <%gamma%> which does not bind a variable in <%alpha%>.
+
+For instance, the instructions of <%Phi%> can be represented using this notations as follows:
 {definition [
+  defline "<%r1%>" "<%x => x%>";
   defline "<%delta%>" "<%x => (x,x)%>";
   defline "<%pi_1%>" "<%(x,\_) => x%>";
   defline "<%pi_2%>" "<%(\_,y) => y%>";
@@ -77,55 +83,48 @@ As partial functions, the instructions of tree machines can be divided into a gu
   defline "<%()%>" "<%() => ()%>";
 ]}
 
-We require that the guards are linear (we can give a meaning to non-linear patterns but they would not have constant time). First we define pure guards <%gamma => emptyact%>, which only check that <%gamma%> matches the shape of the tree:
-(* arnaud: supprimer emptyact *)
-{definition [
-  defline "<%(x => emptyact)%>" "<%r1%>";
-  defline "<%(() => emptyact)%>" "<%()%>";
-  defline "<%((gamma_1,gamma_2) => emptyact)%>" "<%((gamma_1 => emptyact),(gamma_2=>emptyact))%>";
-]}
-We now define generalised projections: instructions of the form <%gamma => x%> where <%x%> is a variable occurring in <%gamma%>:
+Conversely, the language of guard and action is subsumed by <%Phi%>, which we shall use as a definition rather than giving and independent definition and prove it as a theorem (which would be, of course, theoretically possible but not practically useful). The definition is lexicographically recursive on the subterm ordering of <%gamma%> then that of <%alpha%>.
 {definition [
   defline "<%(x => x)%>" "<%r1%>";
-  defline "<%((gamma_1,gamma_2) => x)%>" "<%((gamma_1 => x),(gamma_2=>emptyact)).pi_1%>" ~side:"when <%x%> occurs in <%gamma_1%>";
-  defline "<%((gamma_1,gamma_2) => x)%>" "<%((gamma_1 => emptyact),(gamma_2=>x)).pi_2%>" ~side:"when <%x%> occurs in <%gamma_2%>";
-]}
-Finally, we can define generalised guard-and-action instructions <%gamma=>alpha%> (where the variables of <%alpha%> occur in <%gamma%>):
-{definition [
-  defline "<%(gamma => ())%>" "<%(gamma => emptyact).epsilon%>";
+  defline "<%(x => ())%>" "<%epsilon%>";
+  defline "<%(() => ())%>" "<%()%>";
+  defline "<%((gamma_1,gamma_2) => ())%>" "<%((gamma_1 => ()),(gamma_2=>())).epsilon%>";
+  defline "<%((gamma_1,gamma_2) => x)%>" "<%((gamma_1 => x),(gamma_2=>())).pi_1%>" ~side:"when <%x%> occurs in <%gamma_1%>";
+  defline "<%((gamma_1,gamma_2) => x)%>" "<%((gamma_1 => ()),(gamma_2=>x)).pi_2%>" ~side:"when <%x%> occurs in <%gamma_2%>";
   defline "<%(gamma => (alpha_1,alpha_2))%>" "<%delta.((gamma=>alpha_1),(gamma=>alpha_2))%>";
 ]}
-
-For example:
-{itemize [
-  "<%sigma = ((x,y) => (y,x)) = delta.((r1,r1).pi_2,(r1,r1).pi_1)%>";
-  "<%push = (((x,y),z) => (x,(y,z))) = delta.(((r1,r1).pi_1,r1).pi_1 , delta.(((r1,r1).pi_2,1).pi_1,((r1,r1),r1).pi_2))%>";
-]}
-We can apply the small optimisation that <%(1,1).pi_i = pi_i%> -- {emph"i.e."} we make sure that  <%(x,y) => x%> (resp. <%(x,y)=>y%>) is compiled to <%pi_1%> (resp. <%pi_2%>). The examples now read:
-{itemize [
-  "<%sigma = ((x,y) => (y,x)) = delta.(pi_2,pi_1)%>";
-  "<%push = (((x,y),z) => (x,(y,z))) = delta.((pi_1,r1).pi_1 , delta.((pi_2,r1).pi_1,((r1,r1),r1).pi_2))%>";
-]}
-Further optimisation could consist in testing the shape of the pattern only once and program fast accessors as generalised projections which do not check side conditions. Combined with fact that <%(i,r1).pi_1 = i.pi_1%> (resp. <%(r1,j).pi_2 = j.pi_2%>) we can obtain a fairly compact form for <%push%>:
-{itemize[
-  "<%push = (((x,y),z) => (x,(y,z))) = ((r1,r1),r1).delta.(pi_1.pi_1 , delta.(pi_2.pi_1,pi_2))%>";
-]}
+The language of pattern and action can be used to conveniently defined the following examples:
+{definition [
+  defline "<%sigma%>" "<%((x,y) => (y,x))%>";
+  defline "" "<%delta.((epsilon,r1).pi_2,(r1,epsilon).pi_1)%>";
+  defline "<%push%>" "<%((x,y),z) => (x,(y,z))%>";
+  defline "" "<%delta.(((r1,epsilon).pi_1,epsilon).pi_1,delta.(((epsilon,r1).pi_2,epsilon).pi_1,((epsilon,epsilon).epsilon,r1).pi_2))%>";
+ ]}
+This procedure does not give the smallest possible definition in terms of <%Phi%> of <%sigma%> and <%push%> (or of pretty much anything for that matter). Here are better candidates for this particular award:
+{definition [
+  defline "<%sigma%>" "<%delta.(pi_2,pi_1)%>";
+  defline "<%push%>" "<%delta.(pi_1.pi_1 , delta.(pi_2.pi_1,pi_2))%>";
+ ]}
+In either case, however, it is fair to claim that the language of guard and patterns gives a clearer account of the intent and semantics of instructions than the more elementary <%Phi%>. In consequence we will peruse the guard and actions in the remainder of the article.
 
 {subsection"Constants"}
 
-
-It will be useful to embed natural numbers in trees. Any embedding will do. We choose a binary encoding for the sake of compactness:
+It will be useful to embed natural numbers in trees. Any embedding will do. We choose a binary encoding for the sake of fun and compactness:
 {definition [
   defline "<%0%>" "<%()%>";
   defline "<%2*n+1%>" "<%((),n)%>";
   defline "<%2*n+2%>" "<%(((),()),n)%>"
  ]}
 
+A direct consequence of this encoding is that any finite set of symbols can be easily represented as particular trees, by mapping them to arbitrary distinct natural numbers. We will do so quite liberally.
 
-{subsection"Zipper"}
+{subsection"Zipper" ~label:s_zipper}
 
-See~{cite"Huet1997"}. Instructions to traverse a tree by focusing on arbitrary deep sub-trees.
+In~{cite"Huet1997"} Huet presents a purely functional data structure, the {emph"zipper"} to implement ``pointers'' in trees, {emph"i.e."} a way to walk through a tree from parent to child or back in constant time and to replace the pointed subtree also in constant time.
 
+The zipper can be adapted to the tree machines as a set of instructions. The zipper instruction provide us with an ability we have not had so far: modifying a subtree at an {emph"a priori"} unbounded depth in a tree.
+
+The idea is that a zipper is represented as a pair <%(c,t)%> of the pointed subtree <%t%> together with a ``reversed tree'' <%c%> which represents the context and gives enough information to rebuild the tree when walking up towards the parent (with the instruction <%up%> below). Here are the relevant instructions:
 {definition [
   defline "<%open%>" "<%x => ((),x)%>";
   defline "<%left%>" "<%(x,(y,z)) => ((0,(x,z)),y)%>";
@@ -133,27 +132,39 @@ See~{cite"Huet1997"}. Instructions to traverse a tree by focusing on arbitrary d
   defline "<%up%>" "<%((0,(x,z)),y) => (x,(y,z)) | ((1,(x,y)),z) => (x,(y,z))%>";
   defline "<%exit%>" "<%((),x) => x%>";
 ]}
+Where <%open%> and <%exit%> transform a tree into a pointer to its root and back, <%left%> walks down to the left child (and marks, in the reversed tree, with <%0%> that it did walk down left), <%right%> to the right child, and <%up%> walks up to the parent, and reconstruct the tree according to the mark left by either <%left%> or <%right%>. For further detail, the reader unfamiliar with these concepts is deeply encouraged to read Huet's paper~{cite"Huet1997"}
 
-The instruction <%zip = up^*.exit%> turns a focused tree back into a tree. Because it uses an iteration, it is not an instruction which has constant time. However, when it is known that the depth of the focused subtree is at most a constant <%n%> we can equivalently use the constant time instruction <%(r1+up^1+%{ldots}%+up^n).exit%>, we may still use <%zip%> as a shorthand.
+(* The instruction <%zip = up^*.exit%> turns a focused tree back into a tree. Because it uses an iteration, it is not an instruction which has constant time. However, when it is known that the depth of the focused subtree is at most a constant <%n%> we can equivalently use the constant time instruction <%(r1+up^1+%{ldots}%+up^n).exit%>, we may still use <%zip%> as a shorthand. *)
 "
 
-let translations = "{section"Translations"}
+let unit_symb = "<%()%>"
+
+let translations = "{section"Comparisons"}
+
+With the basic material now set in place, we can now turn to the use of the tree machine as a computational complexity model. It is important to be precise on what is meant here: clearly, complexity classes are very robust, and it does not matter what computation model is taken to define them; the tree machine is no exception. However, for more fine grained accounts of asymptotic complexity, the model will matter a lot: in Turing machines already, multiple-tape Turing machines can provide a quadratic speedup over single-tape ones.
+
+It is this sort of complexity that is our concern, and the claim of this article is that the tree machine is a good complexity model for purely functional computations.
 
 {subsection"Turing machines as tree machines"}
 
-It is straightforward to implement Turing machines as tree-machines: fixing a coding for the alphabet, we arrange the tree to be a pair of lists of symbols representing the tape left and right of the head respectively.
+It is straightforward to implement Turing machines as tree-machines: fixing a coding for the alphabet, we arrange the tree to be a pair <%(L,R)%> of lists of symbols. The list <%R=(%{mathsf$a$}%_0, (%{mathsf$a$}%_1, (%{ldots}%,%{unit_symb^^ldots}%)))%> represents the part of the tape just under and to the right of the head (<%%{mathsf$a$}%_0%> is the symbol under the head). The reversed list <%L=(((%{ldots^^unit_symb}%,%{ldots}%),%{mathsf$b$}%_2),%{mathsf$b$}%_1)%> represents the part of the tape which sits to the left of the head. With this representation there is no need for a special symbol to stand at empty slots on the tape: instead the symbol under the head is empty when <%R%> is the empty list <%()%>.
 
-All Turing machine instructions are implemented in constant time:
+The instruction of Turing machines are implemented as instruction of the tree machines (in guard-and-action style):
 {itemize [
-  "Write symbol {mathsf$a$} under the head: <%(x,(\_,y)) => (x,(%{mathsf$a$}%,y)) | (x,()) => (x,(%{mathsf$a$}%,()))%> (the second case extends the tape if we reached the end)";
-  "Move right: <%(x,(y,z)) => ((x,y),z)%>";
-  "Move left: <%((x,y),z) => (x,(y,z))%>";
-  "Check that symbol {mathsf$a$} is under the head: <%(\_,(%{mathsf$a$}%,\_)) => emptyact%>";
+  "Write symbol {mathsf$a$} under the head: <%(L,(\_,R)) => (L,(%{mathsf$a$}%,R)) | (x,()) => (x,(%{mathsf$a$}%,()))%> (the second case extends the tape if we reached the end)";
+  "Move right: <%(L,(x,R)) => ((L,x),R)%>";
+  "Move left: <%((L,x),R) => (L,(x,R))%>";
+  "Check that symbol {mathsf$a$} is under the head: <%(L,(%{mathsf$a$}%,R)) => (L,(%{mathsf$a$}%,R))%>";
 ]}
+Therefore, a Turing machines is translated to a tree machine with the same state and transitions, except the instructions labelling transitions are replaced with their respective implementation as tree machine instructions.
 
-So a Turing machine is translated to a tree machine with the same state and transitions labelled as above.
+This translation highlights a point which is occasionally overlooked: Turing machines are not a very good model of imperative programs. Turing machines can be simulated in constant time in a purely functional language, and so can multiple-tape Turing machines. To get a better model of imperative programs, we shall turn to random-access machines in Section~{ref_ s_ram}.
 
 {subsection"A finite type for tree machines"~label:s_finitetype}
+
+In order to build the converse translation of tree machines into Turing machines, it will be convenient for the set instruction to be presented by a finite set <%Psi%>. To obtain this finite presentation we will use the zipper instructions from Section~{ref_ s_zipper}. To be more specific, we will implement the instruction <%(i,j) IN Phi%> as a (finite) sequence of zipper operations which will walk through the tree to apply the appropriate actions to the appropriate subtrees.
+
+Remember that a zipper is a pair <%(c,t)%> of a focused subtree <%t%> together with a reversed tree <%c%> representing the necessary context to rebuild the tree. Our goal is to lift the instructions of <%Phi%> so that they apply to the focused subtree.
 
 The zipper allow us to build a finite set <%Psi%> of instruction which is complete with respect to tree machines, we write <%[[i]]%> for the interpretation of <%i%> in this new set:
 
@@ -182,7 +193,7 @@ The instructions of tree machines are not translated as constant time machines. 
 
 Therefore, tree machines and Turing machines have the same complexity classes (we only discuss non-deterministic machines in this article, but there is a natural notion of deterministic tree machine, and the translation can be arranged to preserve determinism). However, the translation from tree machines to Turing machines is non-trivial both in term of slowdown of the translated machine and complexity of the translation itself. It would be quite hard to get an explicit description of the translation. On the other hand the translation of Turing machines into tree machines is quite direct. Tree machines are a significant improvement over Turing machines.
 
-{subsection"Tree machines as random access machines"}
+{subsection"Tree machines as random-access machines" ~label:s_ram}
 
 A more natural encoding of Tree machines is in random access machines -- another example of Eilenberg machine. In this translation, a tree is an address at this address there is <%0%> if the tree is empty, and <%1%> if the tree is a pair. In the latter the two following addresses contain the addresses of the two subtrees.
 
@@ -195,7 +206,7 @@ Both are linear in a random access machine.
 
 Memory allocation and garbage collection are usually assumed away in modern programming language, making the Tree machine a good complexity model of modern programming languages. On the other hand, it does not have constant-time-access arrays, which the random access machines provides and are available in programming language -- except purely functional ones.
 
-{subsection"Encoding {lambda}-calculus" ~label:s_lambda}
+{section"Encoding {lambda}-calculus" ~label:s_lambda}
 
 Using explicit substitution {lambda}{upsilon}-calculus~{cite"Lescanne1994"}:
 {Prelude.definition[
