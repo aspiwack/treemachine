@@ -112,6 +112,9 @@ let includegraphics ?height ?width ?keepaspectratio t =
 
 (*** Definition blocks ***)
 
+let display x =
+  displaymath (parbox (`Linewidth 0.85) x)
+
 type defline =
     { name:Latex.t ; def:Latex.t ; side:Latex.t option }
 
@@ -120,13 +123,15 @@ let defline ?side name def =
 
 let definition lines =
   let format_line {name;def;side} =
-    let defn = name^^text" = "^^def in
-    match side with
-    | Some side -> defn^^qquad^^text"("^^side^^text")"
-    | None -> defn
+    let side =
+      match side with
+      | Some side -> text"("^^side^^text")"
+      | None -> empty
+    in
+    array_line [name;text"=";def;side]
   in
   let lines = List.map format_line lines in
-  itemize lines
+  display (array [`L;`Sep quad;`C;`Sep quad;`L;`Sep qquad; `L] lines)
 
 (** A short module for proof.sty *)
 
