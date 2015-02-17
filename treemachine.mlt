@@ -6,31 +6,48 @@ open Prelude
 
 (*** labels ***)
 
+let s_treemachine = label ~name:\"s:treemachine\" ()
+let s_finitetype = label ~name:\"s:finitetype\" ()
+let s_lambda = label ~name:\"s:lambda\" ()
+
 (*** doc ***)
 
 let abstract = "A variant of Turing machines is introduced where the tape is replaced by a single tree which can be manipulated in a style akin to purely functional programming. This presents two benefits: first, the extra structure on the tape can be leveraged to write explicit constructions of machines much more easily than with Turing machines. Second, this new kind of machines models finely the asymptotic complexity of functional programming languages, and may allow to answer questions such as ``is this problem inherently slower in functional languages''."
 
+let intro = "{section"Intro"}
+
+This article came to be as I seem to find myself all to often in two kinds of discussions: one of them is the functional programmer's complaint that Turing machine make an unpleasant computation model as it is so unstructured that writing any explicit Turing machine is a chore usually left to the gods of hand-waving. The second one is a common interrogation about some computational problem: ``is it actually slower by a logarithmic factor to solve with a purely functional program, rather than an imperative one''.
+
+My inner functional programmer's reflex would be to turn to {lambda}-calculus to answer such questions. However, there is no denying that it is easier to quantify over automata-like machines, such as Turing-machines, for the purpose of proving complexity results. With that in mind, I will introduce, in this article, a variant of Turing machines, the tree machine, with better structured data which correspond faithfully to the cost-model of purely functional programming languages.
+
+I will not attempt to answer, either positively or negatively, whether concrete problems are slower or not in purely functional style; I will however, give an explicit description of a machine implementing {lambda}-calculus in section~{ref_ s_lambda}, to demonstrate that it is effectively possible to write non-trivial machines explicitly in this model.
+
+{paragraph"Acknowledgment"} I want to thank Alexandre Miquel and Guyslain Naves who, most independently, planted the seed of this article in my mind through very entertaining and enlightening discussions."
+
 let eilenberg = "{section"Eilenberg's machines"}
 
-Eilenberg~{cite"Eilenberg1974"~extra:"Chapter X"} introduces a generic notion of machines which can be formalised as follows: a type of machine is given by a set <%X%> of {emph"data"} and a set <%Phi SUB sP\(X*X\)%> of {emph"instructions"}. Most of the times the instructions will be partial relations.
+We will work with a generic notion of machines introduced by Eilenberg~{cite"Eilenberg1974"~extra:"Chapter 10"}, which can be instantiated to yield finite automata as well as Turing machines. The tree machine introduced in Section~{ref_ s_treemachine} is yet another instantiation of Eilenberg's machine (in fact we will give several equivalent definitions).
 
-A machine of type <%(X,Phi)%> is given by a finite set <%Q%> of {emph"states"}, and subsets <%I%> and <%F%> of initial and finite states, as usual for automata. Transitions are labelled with relations of <%Phi%>. A path <%q_0%>,{ldots},<%q_n%> computes the composition of the relations on the successive edges. The machine itself compute the union of the relation computed by path from an initial state to a final state.
+A type of machine is given by a set <%X%> of {emph"data"} and a set <%Phi SUB sP\(X*X\)%> of {emph"instructions"}. Most of the times the instructions will be partial relations. A machine of type <%(X,Phi)%> is given by a finite set <%Q%> of {emph"states"}, and subsets <%I%> and <%F%> of initial and finite states, as usual for automata. Transitions are labelled with relations of <%Phi%>. A path <%q_0%>,{ldots},<%q_n%> computes the composition of the relations on the successive edges. The machine itself compute the union of the relation computed by path from an initial state to a final state.
 
-It does not change the expressiveness to close <%Phi%> by composition (<%i_1.i_2%>), union (<%i_1+i_2%>), identity (<%r1%>) and empty relation (<%r0%>){footnote"In Eilenberg's formulation, a more general kind of relation is considered, in order to be able, typically, to count the multiplicity of successful path. In that case, closure by <%r1%> ({emph"i.e."} adding {epsilon}-transitions) is not permitted."}. We shall use this fact implicitly.
+It does not change the expressiveness to close <%Phi%> by composition (<%i_1.i_2%>), union (<%i_1+i_2%>), identity (<%r1%>){footnote"In Eilenberg's formulation, a more general kind of relation is considered, in order to be able, typically, to count the multiplicity of successful path. In that case, closure by <%r1%> ({emph"i.e."} adding {epsilon}-transitions) is not permitted."} and empty relation (<%r0%>). We shall use this fact implicitly.
 
-In fact, relations computed by a machine of type <%(X,Phi)%> are exactly the relations in the sub-Kleene algebra of <%sP\(X*X\)%> generated by <%Phi%>: Thompson's~{cite"Thompson1968"} and Kleene's~{citation_needed} work just as well as for finite automata. So Eilenberg machines are equivalent to regular expressions with alphabet <%Phi%>. Closing <%Phi%> by all the regular expression operations does not change what relation the machines compute, but it changes the complexity. Therefore we may refer to regular expressions as machines, while we will reserve the term {emph"instructions"} to star-free expressions.
+In fact, relations computed by a machine of type <%(X,Phi)%> are exactly the relations in the sub-Kleene algebra of <%sP\(X*X\)%> generated by <%Phi%>: the result for finite automata lifts naturally to Eilenberg's machines. So Eilenberg machines are equivalent to regular expressions with alphabet <%Phi%>. However, if closing <%Phi%> by all the regular expression operations does not change what relation the machines compute, it does change the complexity. Since we are concerned with complexity properties, we may therefore refer to regular expressions as machines, while we will reserve the term {emph"instructions"} to star-free expressions.
 
-Finite automata as well as Turing machines are examples of Eilenberg machines. (* arnaud: formellement il faut un moyen de produire l'entr'ee et lire la sortie. *)
+This definition of Eilenberg's machines is naturally non-deterministic. It would be more accurate to work with deterministic machines in the setting of this article, but it does not really change anything of substance, and would unnecessarily clutter the presentation. So the machines throughout this article will be non-deterministic, but all of them could be made deterministic, and actually should, for practical applications.
+(* arnaud: formellement il faut un moyen de produire l'entr'ee et lire la sortie. *)
+(* arnaud: expliquer ce qu'est la composition de relation ? *)
 "
 
-let definition = "{section"Tree machines"}
-Let us define the set <%T%> of trees as the set generated by the following grammar:
+let definition = "{section"Tree machines" ~label:s_treemachine}
+
+Let us define the set <%T%> of (rooted, unlabeled, binary) trees as the set generated by the following grammar:
 {displaymath begin array [`L;`Sep$~::=~$;`L;`Sep$~{mid}~$;`L] [
   array_line ["<%u%>,<%v%>"; "<%()%>"; "<%(u,v)%>"];
 ]end}
-That is, <%T%> is the set of unlabelled binary trees.
+Such trees will be the data of our tree machines. Take notice of the fact that trees do not replace the alphabet of Turing machines but the whole tape: there will not be a tape of trees, just one tree.
 
-We define the following partial functions on <%T%>:
+Let us define the following partial functions on <%T%>:
 {definition [
   defline "<%delta x%>" "<%(x,x)%>";
   defline "<%pi_1 x%>"  "<%y%>" ~side:"if <%exists z:T, x=(y,z)%>";
@@ -40,15 +57,14 @@ We define the following partial functions on <%T%>:
   defline "<%() x%>" "<%()%>" ~side:"if <%x=()%>";
 ]}
 
-The set of instruction <%Phi%> is chosen to be the smallest set containing <%{delta;pi_1;pi_2;epsilon;()}%> and closed by <%(ph;ph)%>. Note that because these instruction are, in the language of categories, the unit, counit and functorial actions of the cartesian product and the terminal element, we can safely claim that they are sufficient to manipulate product.
-(* arnaud: ajouter r1 au type (c'est eliminable, mais c'est important dans (1,1) and such). Si je ne m'abuse `delta.(pi_1,pi_2) + ()` est 'equivalent `a r1 cela dit *)
+The set of instruction <%Phi%> is chosen to be the smallest set containing the partial functions <%{delta;pi_1;pi_2;epsilon;();r1}%> and closed by <%(ph,ph)%>. This set of instructions has been chosen to correspond to the presentation of cartesian products and terminal elements in categories as adjunctions.
 
-We call tree machine a machine of type <%(T,Phi)%>. Notice that, contrary to Turing machines, tree machines are not parametrised by an alphabet: the tree structure offers enough power on its own.
+We call {emph"tree machine"} a machine of type <%(T,Phi)%>. Notice that, contrary to Turing machines, tree machines are not parametrised by an alphabet: the tree structure offers enough power on its own.
 
-The <%(ph,ph)%> instruction allows to observe and change sub-trees at an arbitrary but bounded depth.
+Tree machines, by virtue of the <%(ph,ph)%> instruction scheme, has an infinite number of instructions which make it possible to observe the tree and modify it at arbitrary depths. However each individual instruction affects trees at a bounded depth, which is considered a constant time operation in functional language, which is the important property we want to ensure. As we shall see in Section~{ref_ s_finitetype}, this choice of an infinite set of instruction is pure convenience: a finite set suffices.
+
 
 {subsection"A language of guards and actions"}
-
 
 As partial functions, the instructions of tree machines can be divided into a guard followed by a reconstruction function. We will adopt a suggestive notation <%gamma => alpha%> where <%gamma%> represents the guard and <%alpha%> the reconstruction function. We may use <%gamma_1 => alpha_1 | gamma_2 => alpha_2%>:
 (* arnaud: ne pas oublier de d'efinir le wildcard *)
@@ -137,7 +153,7 @@ All Turing machine instructions are implemented in constant time:
 
 So a Turing machine is translated to a tree machine with the same state and transitions labelled as above.
 
-{subsection"A finite type for tree machines"}
+{subsection"A finite type for tree machines"~label:s_finitetype}
 
 The zipper allow us to build a finite set <%Psi%> of instruction which is complete with respect to tree machines, we write <%[[i]]%> for the interpretation of <%i%> in this new set:
 
@@ -179,7 +195,7 @@ Both are linear in a random access machine.
 
 Memory allocation and garbage collection are usually assumed away in modern programming language, making the Tree machine a good complexity model of modern programming languages. On the other hand, it does not have constant-time-access arrays, which the random access machines provides and are available in programming language -- except purely functional ones.
 
-{subsection"Encoding {lambda}-calculus"}
+{subsection"Encoding {lambda}-calculus" ~label:s_lambda}
 
 Using explicit substitution {lambda}{upsilon}-calculus~{cite"Lescanne1994"}:
 {Prelude.definition[
@@ -267,6 +283,7 @@ let authors = [
 ]
 
 let d = concat [
+  intro;
   eilenberg;
   definition;
   translations;
