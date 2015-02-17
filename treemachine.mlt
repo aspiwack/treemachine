@@ -164,28 +164,37 @@ This translation highlights a point which is occasionally overlooked: Turing mac
 
 In order to build the converse translation of tree machines into Turing machines, it will be convenient for the set instruction to be presented by a finite set <%Psi%>. To obtain this finite presentation we will use the zipper instructions from Section~{ref_ s_zipper}. To be more specific, we will implement the instruction <%(i,j) IN Phi%> as a (finite) sequence of zipper operations which will walk through the tree to apply the appropriate actions to the appropriate subtrees.
 
-Remember that a zipper is a pair <%(c,t)%> of a focused subtree <%t%> together with a reversed tree <%c%> representing the necessary context to rebuild the tree. Our goal is to lift the instructions of <%Phi%> so that they apply to the focused subtree.
+Remember that a zipper is a pair <%(c,t)%> of a focused subtree <%t%> together with a reversed tree <%c%> representing the necessary context to rebuild the tree. Our goal is to lift the instructions of <%Phi%> so that they apply to the focused subtree instead of the root of the complete tree. In other words, we are looking for a <%[[i]]=(1,i)%> for each <%i IN Phi%>.
 
-The zipper allow us to build a finite set <%Psi%> of instruction which is complete with respect to tree machines, we write <%[[i]]%> for the interpretation of <%i%> in this new set:
-
+This property that <%[[i]]=(1,i)%> acts as a perfectly fine definition for each of the generators of <%Phi%>:
 {Prelude.definition [
-  defline "<%[[()]]%>" "<%(\_,()) => emptyact %>";
-  defline "<%[[epsilon]]%>" "<%(x,\_) => (x,())%>";
-  defline "<%[[pi_1]]%>" "<%(x,(y,z)) => (x,y)%>";
-  defline "<%[[pi_2]]%>" "<%(x,(y,z)) => (x,z)%>";
-  defline "<%[[delta]]%>" "<%(x,y) => (x,(y,y))%>";
+  defline "<%[[r1]]%>" "<%(r1,r1)%>";
+  defline "<%[[()]]%>" "<%(r1,())%>";
+  defline "<%[[epsilon]]%>" "<%(r1,epsilon)%>";
+  defline "<%[[pi_1]]%>" "<%(r1,pi_1)%>";
+  defline "<%[[pi_2]]%>" "<%(r1,pi_2)%>";
+  defline "<%[[delta]]%>" "<%(r1,delta)%>";
+ ]}
+For the case <%(i,j)%> however, in order to avoid introducing infinitely many instructions in <%Psi%>, we need to find an alternative definition in terms of the zipper operations. We define <%[[(i,j)]]%> recursively as follows:
+{Prelude.definition [
   defline "<%[[(i,j)]]%>" "<%left.[[i]].up.right.[[j]].up%>";
  ]}
+It is a straightforward exercise of symbol pushing to verify that indeed, by induction, <%[[(i,j)]] = (r1,(i,j))%>.
 
-Every instruction <%i IN Phi%> can be implemented as <%open.[[i]].exit%>. The instructions in <%Psi%> observe the tree at depth at most <%3%> (<%up%> gives the upper bound).
+Every instruction <%i IN Phi%> can be implemented as <%open.[[i]].exit%>. Therefore we can take the set <%Phi%> as being
+{displaymath
+  "<%Psi = {open;left;right;up;exit;(r1,r1);(r1,());(r1,epsilon);(r1,pi_1);(r1,pi_2);(r1,delta)}%>"}
 
-(* arnaud:
-Remark: more generally, we can implement <%(r,s)%> for any two machines <%r%> and <%s%> as <%left.(r1,r).up.right.(r1,s).up%>.
-*)
 
 {subsection"Tree machines as Turing machines"}
 
-Translating tree machines into Turing machines is not as direct as the converse. One way to translate trees into word so that it fits a Turing machine tape is to use the Polish notations: we take the alphabet to be <%{%{mathsf$p$}%;%{mathsf$u$}%}%> (for {emph"pair"} and {emph"unit"} respectively). The tree <%((),((),()))%> is then translated to <%pspss%>.
+Translating tree machines into Turing machines is not as direct as the converse. One way to translate trees into word so that it fits a Turing machine tape is to use the Polish notations: we take the alphabet to include <%{%{mathsf$p$}%;%{mathsf$u$}%}%> (for {emph"pair"} and {emph"unit"} respectively). The tree <%((),((),()))%> is then translated to <%pupuu%>.
+
+As always, giving a concrete definition of a Turing machine~--~or even of a translation to Turing machine~--~is not very easy nor particularly enlightening, and, in fact, would lead us way over the page limit. On the other hand, equipped with the finite presentation of Section~{ref_ s_finitetype}, it is quite clear that it can in principle be done.
+
+Let us sketch how such a construction could be achieved. In a first step we can ignore the <%open%> and <%exit%> instruction, and assume we are always working on a zipper. The rational is that <%exit.open%> acts as the identity on a zipper which is focused at the root, so we may simply represent non-zipper trees as zipper focused at the root and both instructions become the identity. One may be tempted to replace calls to <%exit%> to test that the context is a {mathsf$u$}, but this is not even necessary as it is an invariant of the translation.
+
+To represent the zipper <%(c,t)%>, the most convenient way is to have two tapes, one holding <%c%> and the other holding <%t%>. A third tape will be useful as a stack to discover subtree boundaries when implementing <%pi_1%> and <%pi_2%>
 
 To manage the Polish notation, we can take a two-tape Turing machine, the first tape holds the current tree, and the second tape can hold a stack to find the boundaries of the two subtrees to implement <%pi_1%> and <%pi_2%> or a buffer with the tree to copy to implement <%delta%>.
 
