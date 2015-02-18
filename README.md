@@ -6,7 +6,7 @@ Arnaud Spiwack
 Abstract
 --------
 
-A variant of Turing machines is introduced where the tape is replaced by a tree. The gain in structure is non-trivial and helps writing explicit constructions of machines.
+A variant of Turing machines is introduced where the tape is replaced by a single tree which can be manipulated in a style akin to purely functional programming. This yields two benefits: first, the extra structure on the tape can be leveraged to write explicit constructions of machines much more easily than with Turing machines. Second, this new kind of machines models finely the asymptotic complexity of functional programming languages, and may allow to answer questions such as "is this problem inherently slower in functional languages".
 
 Sources
 -------
