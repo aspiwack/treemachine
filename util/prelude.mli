@@ -51,7 +51,7 @@ type defline
 
 val defline : ?side:Latex.t -> Latex.t -> Latex.t -> defline
 
-val definition : defline list -> Latex.t
+val definition : ?symb:Latex.t -> defline list -> Latex.t
 
 (** A short module for proof.sty *)
 module Infer : sig

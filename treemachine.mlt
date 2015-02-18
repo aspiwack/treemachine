@@ -9,12 +9,13 @@ open Prelude
 let s_treemachine = label ~name:\"s:treemachine\" ()
 let s_zipper = label ~name:\"s:zipper\" ()
 let s_finitetype = label ~name:\"s:finitetype\" ()
+let s_toturing = label ~name:\"s:to:turing\" ()
 let s_ram = label ~name:\"s:ram\" ()
 let s_lambda = label ~name:\"s:lambda\" ()
 
 (*** doc ***)
 
-let abstract = "A variant of Turing machines is introduced where the tape is replaced by a single tree which can be manipulated in a style akin to purely functional programming. This presents two benefits: first, the extra structure on the tape can be leveraged to write explicit constructions of machines much more easily than with Turing machines. Second, this new kind of machines models finely the asymptotic complexity of functional programming languages, and may allow to answer questions such as ``is this problem inherently slower in functional languages''."
+let abstract = "A variant of Turing machines is introduced where the tape is replaced by a single tree which can be manipulated in a style akin to purely functional programming. This yields two benefits: first, the extra structure on the tape can be leveraged to write explicit constructions of machines much more easily than with Turing machines. Second, this new kind of machines models finely the asymptotic complexity of functional programming languages, and may allow to answer questions such as ``is this problem inherently slower in functional languages''."
 
 let intro = "{section"Intro"}
 
@@ -54,7 +55,7 @@ Let us define the following partial functions on <%T%>:
   defline "<%delta x%>" "<%(x,x)%>";
   defline "<%pi_1 x%>"  "<%y%>" ~side:"if <%exists z:T, x=(y,z)%>";
   defline "<%pi_2 x%>"  "<%z%>" ~side:"if <%exists y:T, x=(y,z)%>";
-  defline "<%(i,j) x%>" "<%(i y,j z)%>" ~side:"if <%x=(y,z)%>, for <%i%> and <%j%> partial functions on <%T%>"; (* arnaud: il faut 'etendre ,ca aux relations en g'en'eral *)
+  defline "<%(i,j) x%>" "<%(i y,j z)%>" ~side:"if <%x=(y,z)%>, for <%i%> and <%j%> partial functions"; (* arnaud: il faut 'etendre ,ca aux relations en g'en'eral *)
   defline "<%epsilon x%>" "<%()%>";
   defline "<%() x%>" "<%()%>" ~side:"if <%x=()%>";
 ]}
@@ -186,7 +187,7 @@ Every instruction <%i IN Phi%> can be implemented as <%open.[[i]].exit%>. Theref
   "<%Psi = {open;left;right;up;exit;(r1,r1);(r1,());(r1,epsilon);(r1,pi_1);(r1,pi_2);(r1,delta)}%>"}
 
 
-{subsection"Tree machines as Turing machines"}
+{subsection"Tree machines as Turing machines" ~label:s_toturing}
 
 Translating tree machines into Turing machines is not as direct as the converse. One way to translate trees into word so that it fits a Turing machine tape is to use the Polish notations: we take the alphabet to include <%{%{mathsf$p$}%;%{mathsf$u$}%}%> (for {emph"pair"} and {emph"unit"} respectively). The tree <%((),((),()))%> is then translated to <%pupuu%>.
 
@@ -194,31 +195,34 @@ As always, giving a concrete definition of a Turing machine~--~or even of a tran
 
 Let us sketch how such a construction could be achieved. In a first step we can ignore the <%open%> and <%exit%> instruction, and assume we are always working on a zipper. The rational is that <%exit.open%> acts as the identity on a zipper which is focused at the root, so we may simply represent non-zipper trees as zipper focused at the root and both instructions become the identity. One may be tempted to replace calls to <%exit%> to test that the context is a {mathsf$u$}, but this is not even necessary as it is an invariant of the translation.
 
-To represent the zipper <%(c,t)%>, the most convenient way is to have two tapes, one holding <%c%> and the other holding <%t%>. A third tape will be useful as a stack to discover subtree boundaries when implementing <%pi_1%> and <%pi_2%>
+To represent the zipper <%(c,t)%>, the most convenient way is to have two tapes, one holding <%c%> and the other holding <%t%>. A third tape will be used to store a counter to navigate through Polish-notation trees, and a fourth to store intermediate trees which are to be moved or copied.
 
-To manage the Polish notation, we can take a two-tape Turing machine, the first tape holds the current tree, and the second tape can hold a stack to find the boundaries of the two subtrees to implement <%pi_1%> and <%pi_2%> or a buffer with the tree to copy to implement <%delta%>.
+The instructions of tree machines are not translated as constant time instructions. However, they are all in a polynomial <%P%> (which depends on the details of the translation, but is at least of degree $1$) of the current size of the tape. Hence, if the complexity of a tree machine is <%O \(f n\)%>, then the corresponding Turing machine has complexity <%O \(P \(f n\) * f n\)%>, which is in the same complexity class.
 
-The instructions of tree machines are not translated as constant time machines. However, they are all in a polynomial <%P%> of the current size of the tape. Hence, if the complexity of a tree machine is <%O \(f n\)%>, then the corresponding Turing machine has complexity <%O \(P \(f n\) * f n\)%>, which is in the same complexity class.
+Therefore, tree machines and Turing machines have the same complexity classes. However, the translation from tree machines to Turing machines is non-trivial both in term of slowdowns of the translated machine and complexity of the translation itself. It would be quite hard to get an explicit description of the translation. On the other hand the translation of Turing machines into tree machines is quite direct. Tree machines fare pretty well on that front.
 
-Therefore, tree machines and Turing machines have the same complexity classes (we only discuss non-deterministic machines in this article, but there is a natural notion of deterministic tree machine, and the translation can be arranged to preserve determinism). However, the translation from tree machines to Turing machines is non-trivial both in term of slowdown of the translated machine and complexity of the translation itself. It would be quite hard to get an explicit description of the translation. On the other hand the translation of Turing machines into tree machines is quite direct. Tree machines are a significant improvement over Turing machines.
+{subsection"Tree machines and random-access machines" ~label:s_ram}
 
-{subsection"Tree machines as random-access machines" ~label:s_ram}
+Random-access machines~--~which happen to be yet another instance of Eilenberg machine~--~support more natural translations of tree machines: the encoding of algebraic data types of functional programming languages. In such a translation, a tree is encoded as an address, at this address there is <%0%> if the tree is empty, and <%1%> if the tree is a pair. In the latter case, the two following addresses contain the addresses of the two subtrees.
 
-A more natural encoding of Tree machines is in random access machines -- another example of Eilenberg machine. In this translation, a tree is an address at this address there is <%0%> if the tree is empty, and <%1%> if the tree is a pair. In the latter the two following addresses contain the addresses of the two subtrees.
+Unfortunately, this translation would not fit these pages either, as it has to solve the problem of memory allocation and garbage collection in order to preserve the space complexity of tree machines. Garbage collection can be done achieved via reference counting~{cite"Wilson1992"} since the tree cannot have cycles, but it still would not make a program under a page long (or anything near it).
 
-In this translation, it is easy to implement the instructions of the tree machine as they are just pointer dereferencing and copy. The difficulties are:
-{itemize[
-  "Memory allocation: finding empty space to store a tree";
-  "Garbage collection: to keep the same memory profile";
-]}
-Both are linear in a random access machine.
+Nevertheless, this translation is quite concrete and serves as a good test for the tree machine. Tree machines, indeed, can implemented in the traditional complexity model of practical computer and, assuming garbage collection away, this implementation preserves the complexity of machines. Assuming that garbage collection is constant time may seem unreasonable, but it is in fact the way functional programmers think about their programs: as having negligible overhead due to garbage collection.
 
-Memory allocation and garbage collection are usually assumed away in modern programming language, making the Tree machine a good complexity model of modern programming languages. On the other hand, it does not have constant-time-access arrays, which the random access machines provides and are available in programming language -- except purely functional ones.
+This translation also serves to remark a limitation of the tree machine for space efficiency. Indeed trees can have various representations in a random-access machine with more or less sharing between subtrees. In the worst case, a maximally shared subtree is exponentially smaller than its sharing-free equivalent. Therefore, in an accurate cost model for tree-machine space consumption, the space occupied by a tree cannot be read on the tree itself: it depends on the history of how the tree was built. There is no particular problem in defining such a dynamic space-cost semantics though, see~{cite"Blelloch2013"} for a much more ambitious case. It also means that the translation to Turing machines in Section~{ref_ s_toturing} is not accurate as far as space complexity is concerned.
+
+Conversely, it is not difficult to implement a random-access machine as a tree machine. Random-access machines are composed of arithmetic operations and an addressed memory. Arithmetic is straightforward, and addressed memory can be stored in a tree (most likely a trie such as in~{cite"Okasaki1999"~extra:"Chapter 10"}).
+
+Random-access machines typically assume constant time arithmetic operations and memory access. The translation of random-access machines into tree machines preserves neither. For the case of constant-time arithmetic, the assumption is not realistic for big numbers, it is actually meant to model the fact that no big numbers will appear and that bounded arithmetic is sufficient for the modelled algorithms. To make such an hypothesis in tree machines, they would need to be outfitted with a primitive notion of integers like random-access machines.
+
+Constant-time memory access is more subtle: it is a reasonable assumption for a vast majority of programs, yet, a more accurate model may use logarithmic-time memory access~{cite"Aggarwal1987"}. Logarithmic-time memory access is precisely what is provided by the tree machine, so it might look as though the superiority of the random-access machine were illusory. It is not, however, as when a model with logarithmic-time memory access apply, it will not be {emph"a priori"} reasonable to see the instructions of the tree machines as running in constant time.
 
 {section"Encoding {lambda}-calculus" ~label:s_lambda}
 
-Using explicit substitution {lambda}{upsilon}-calculus~{cite"Lescanne1994"}:
-{Prelude.definition[
+To conclude, I want to present, with few words, an encoding of {lambda}-calculus in tree machines to demonstrate that it is really practical to make explicit definitions of non-trivial machines.
+
+We shall use the simple explicit substitution calculus called {lambda}{upsilon}-calculus~{cite"Lescanne1994"}. It uses de Bruijn indices and has three kinds of substitutions: $[v]$ for a term $v$, $[{uparrow}]$ (read {emph"shift"}) and $[{uparrow_}s]$ (read {emph"lift $s$"}) for a substitution $s$.
+{Prelude.definition ~symb:leadsto [
   defline $({lambda}u)v$ $u[v]$;
   defline $({lambda}u)[s]$ ${lambda}(u[{uparrow_}s])$;
   defline $(u v)[s]$ $(u[s])(v[s])$;
@@ -226,28 +230,30 @@ Using explicit substitution {lambda}{upsilon}-calculus~{cite"Lescanne1994"}:
   defline $(n+1)[v]$ $n+1$;
   defline $0[{uparrow_}s]$ $0$;
   defline $(n+1)[{uparrow_}s]$ $n[s][{uparrow}]$;
-  defline $n[{uparrow}s]$ $n+1$;
+  defline $n[{uparrow}]$ $n+1$;
 ]}
 
-We will use the non-determinism of tree machines to represent the non-determinism of {beta}-reduction (the converse is not possible).
+Let us suppose fixed an encoding for the symbols that we will use in the encoding of terms: <%{lam;app;succ;nought;subst;term;lift;shift;ok}%>. The terms ${lambda}u$ and $u v$ are represented, respectively <%(lam,u)%> and <%(app,(u,v))%>. The de Bruijn index $2$ is represented as <%(succ,(succ,nought))%>.
 
-We fix an encoding for the following list of symbols <%{lam;app;succ;nought;subst;term;lift;shift}%>. First we need zipper-like constructions to navigate through terms:
+We will use the non-determinism of tree machines to represent the non-determinism of {beta}-reduction, which is achieved navigating non-deterministically in {lambda}-terms with zipper-like instructions.
 {Prelude.definition [
   defline "<%open%>" "<%u => ((),u)%>";
   defline "<%down_lam%>" "<%(c,(lam,u)) => ((c,lam),u)%>";
   defline "<%down_sigma%>" "<%(c,(subst,(u,s))) => ((c,(subst,s)),u)%>";
   defline "<%left%>" "<%(c,(app,(u,v))) => ((c,(app,(0,v))),u)%>";
-  defline "<%right%>" "<%(c,(app,(u,v))) => ((c,(app,(1,u))),v)%>";
+  defline "<%right%>" "<%(c,(app,(u,v))) => ((c,(app,(1,u))),v)%>";]
+^^Prelude.definition [
   defline "<%up_lam%>" "<%((c,lam),u) => (c,(lam,u))%>";
   defline "<%up_sigma%>" "<%((c,(subst,s)),u) => (c,(subst,(u,s)))%>";
-  defline "<%up_app%>" "<%((c,(app,(0,v))),u) => (c,(app,(u,v))) | ((c,(app,(1,u))),v) => (c,(app,(u,v)))%>";
-  defline "<%up%>" "<%up_lam+up_sigma+up_app%>";
+  defline "<%up_\(app_0\)%>" "<%((c,(app,(0,v))),u) => (c,(app,(u,v)))%>";
+  defline "<%up_\(app_1\)%>" "<%((c,(app,(1,u))),v) => (c,(app,(u,v)))%>";
+  defline "<%up%>" "<%up_lam | up_sigma | up_\(app_0\) | up_\(app_1\)%>";
   defline "<%exit%>" "<%((),u) => u%>";
   defline "<%move%>" "<%down_lam+down_sigma+left+right+up%>";
   defline "<%zip%>" "<%up^*.exit%>";
  ]}
-Now we implement the rules in a context independent manner:
-{Prelude.definition [
+The reduction rules are given in a context independent manner:
+{small @@ Prelude.definition [
   defline "<%beta%>" "<%(app,((lam,u),v)) => (subst,(u,(term,v)))%>";
   defline "<%lam_sigma%>" "<%(subst,((lam,u),s)) => (lam,(subst,(u,(lift,s))))%>";
   defline "<%app_sigma%>" "<%(subst,((app,(u,v)),s)) => (app,((subst,(u,s)),(subst,(v,s))))%>";
@@ -255,17 +261,13 @@ Now we implement the rules in a context independent manner:
   defline "<%succ_term%>" "<%(subst,((succ,n),(term,\_))) => succ n%>";
   defline "<%nought_lift%>" "<%(subst,(nought,(lift,\_))) => nought%>";
   defline "<%succ_lift%>" "<%(subst,((succ,n),(lift,s))) => (subst,((subst,(x,s)),shift))%>";
-  defline "<%var_shift%>" "<%(subst,(nought,shift)) => (succ,nought) | (subst,((succ,n),shift)) => (succ,(succ,n))%>";
-  defline "<%rule_sigma%>" "<%lam_sigma+app_sigma+nought_term+succ_term+nought_lift+succ_lift+var_shift%>"; 
-  defline "<%rule%>" "<%beta+rule_sigma%>";
+  defline "<%nought_shift%>" "<%(subst,(nought,shift)) => (succ,nought)%>";
+  defline "<%succ_shift%>" "<%(subst,((succ,n),shift)) => (succ,(succ,n))%>";
+  defline "<%var_shift%>" "<%nouhgt_shift | succ_shift%>";
+  defline "<%sigma%>" "<%lam_sigma | app_sigma | nought_term | succ_term | nought_lift | succ_lift | var_shift%>"; 
+  (* defline "<%rule%>" "<%beta+rule_sigma%>"; *)
 ]}
-A step of {lambda}{upsilon}-calculus is implemented as:
-{Prelude.definition[
-  defline "<%step%>" "<%open.move^*.(1,rule).zip%>";
-]}
-Reduction is then <%step^*%>.
-
-To better represent actual {lambda}-calculus, a step of reduction should correspond to exactly one {beta}-reduction and substitutions should be eliminated. To do so we extend or alphabet of symbol with a symbol <%ok%> together with the following rules:
+A step of {beta}-reduction is represented as one {beta} rule followed by eagerly applying {sigma} rules. To ensure that explicit substitutions have been eliminated, substitution-free terms are marked with <%ok%>.
 {Prelude.definition[
   defline "<%nought_ok%>" "<%nought => (ok,nought)%>";
   defline "<%succ_ok%>" "<%(succ,n) => (ok,(succ,n))%>";
@@ -274,10 +276,19 @@ To better represent actual {lambda}-calculus, a step of reduction should corresp
   defline "<%rule_ok%>" "<%nought_ok+succ_ok+lam_ok+app_ok%>";
   defline "<%check_ok%>" "<%(ok,u) => u%>";
 ]}
-Then, we can encode a step of {lambda}-calculus with:
+A step of {beta}-reduction is encoded as the following machine{footnote"Notations are abused a little in this example, as <%(ph,ph)%> is used with relations which are not instructions from the type <%Phi%>. It can be made formal using Section~{ref_ s_finitetype}."}:
 {Prelude.definition[
-  defline "<%step%>" "<%open.move^*.(1,beta.rule_sigma^*.rule_ok^*.check_ok).zip%>";
+  defline "<%all_sigma%>" "<%(move^*.(r1,sigma))^*%>";
+  defline "<%zip_ok%>" "<%(move^*.(r1,rule_ok))^*.exit.check_ok%>";
+  defline "<%step%>" "<%open.move^*.(r1,beta.open.all_sigma.zip_ok).zip%>";
 ]}
+"
+
+let conclusion = "{section"Conclusion"}
+
+The tree machine is designed to stand as a standard model of complexity for purely functional algorithms, much like the random-access machine is for imperative algorithms. At the cost of not being quite as minimalist as Turing machines, tree machines are quite expressive and make it reasonably easy to write explicit machines to implement desired behaviours.
+
+In fact, if in this article I have given direct descriptions of machines, a technique, favoured by Danvy, allows to compile programs written in a very small purely functional idealised Scheme language, with full recursion and higher order, into a tree machine. This is achieved by apply sequentially to the program the following transformations: defunctionalisation, continuation-passing style transformation, and defunctionalisation again~{cite"Ager2003"}. This sequence of transformation yields a mutually recursive first-order program where all calls (in particular recursive calls) are tail, while preserving the structure of the program. At this point we are one tiny step shy of having a tree machine: function environments must be reified as data and variables as accessors in this data. Then, using the guard-and-action presentation of tree machines, we can build a machine with just one state per function in the transformed program (the functions of the original program plus one or two administrative functions). Yielding another, more indirect, way to produce explicit tree machines.
 "
 
 (*** Emit document ***)
@@ -307,6 +318,7 @@ let d = concat [
   eilenberg;
   definition;
   translations;
+  conclusion;  
   command \"bibliography\" [A,"library"] A;
 ]
 

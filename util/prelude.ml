@@ -121,14 +121,19 @@ type defline =
 let defline ?side name def =
   { name ; def ; side }
 
-let definition lines =
+let definition ?symb lines =
+  let symb =
+    match symb with
+    | None -> text"="
+    | Some s -> s
+  in
   let format_line {name;def;side} =
     let side =
       match side with
       | Some side -> text"("^^side^^text")"
       | None -> empty
     in
-    array_line [name;text"=";def;side]
+    array_line [name;symb;def;side]
   in
   let lines = List.map format_line lines in
   display (array [`L;`Sep quad;`C;`Sep quad;`L;`Sep qquad; `L] lines)
